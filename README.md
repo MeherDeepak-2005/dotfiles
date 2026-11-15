@@ -1,5 +1,7 @@
 # Meher's dotfiles
 
+[![Validate dotfiles](https://github.com/MeherDeepak-2005/dotfiles/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/MeherDeepak-2005/dotfiles/actions/workflows/validate.yml)
+
 One installer for the same Rose Pine Moon terminal/editor workflow on macOS,
 Linux, and **native Windows**. Windows uses **psmux**, not WSL. macOS/Linux use tmux.
 
@@ -82,6 +84,19 @@ macOS-only blur settings are applied only on macOS.
 Personal command-line apps, credentials, histories, Git identity, Anaconda,
 old Python framework paths, and machine-specific IDE paths are not copied.
 An existing Anaconda install is detected by the zsh configuration.
+
+### Why psmux on Windows?
+
+psmux runs natively on Windows and supports tmux-style configuration, commands,
+panes, and persistent sessions. This bundle uses tmux on macOS/Linux and psmux
+on Windows, with one shared set of bindings and platform-specific shell settings.
+Windows files stay on the Windows filesystem; no WSL environment is involved.
+
+The project's [published performance measurements](https://github.com/psmux/psmux/blob/master/docs/performance.md)
+report low multiplexer overhead, with shell startup contributing much of the
+time needed to open a pane. Those measurements are not a direct comparison with
+tmux on your hardware, so equivalent performance is not guaranteed. WezTerm's
+GPU acceleration affects terminal rendering, not filesystem or Git performance.
 
 ## Existing configs: your choice
 
@@ -198,6 +213,11 @@ no unattended deletion flag. With no terminal, a differing config causes an
 error unless `--existing backup` or `--existing keep` was supplied.
 
 ## Validation
+
+The implementation at commit `0938a0b` passed
+[macOS, Linux, and native Windows validation](https://github.com/MeherDeepak-2005/dotfiles/actions/runs/43722185599),
+including real tmux/psmux pane operations and isolated Neovim plugin installation.
+The badge above links to the latest workflow status.
 
 ```bash
 python3 -m unittest discover -s tests -v
