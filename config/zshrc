@@ -23,6 +23,9 @@ HISTSIZE=50000
 SAVEHIST=50000
 setopt APPEND_HISTORY SHARE_HISTORY HIST_IGNORE_DUPS
 bindkey -e
+# Paste cycling: Ctrl+X, then Y; Alt+Y is reserved for pane splits.
+bindkey -r '^[y'
+bindkey '^Xy' yank-pop
 autoload -Uz compinit
 compinit
 

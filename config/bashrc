@@ -7,6 +7,9 @@ export PATH="${SCOOP:-$HOME/scoop}/shims:$HOME/.local/bin:$HOME/bin:$PATH"
 HISTSIZE=50000
 HISTFILESIZE=50000
 shopt -s histappend
+# Paste cycling: Ctrl+X, then Y; Alt+Y is reserved for pane splits.
+bind -m emacs-standard -r '\ey'
+bind -m emacs-standard '"\C-xy": yank-pop'
 alias ..='cd ..'
 alias g=git
 alias vim=nvim

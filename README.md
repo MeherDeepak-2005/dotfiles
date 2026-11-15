@@ -171,7 +171,7 @@ Option on Mac is Alt on Windows/Linux. These are shared between tmux and psmux:
 | --- | --- |
 | Move left / down / up / right | Alt + H / J / K / L |
 | Create side-by-side panes | Alt + V |
-| Create top/bottom panes | Backtick, then Y |
+| Create top/bottom panes | Alt + Y (or backtick, then Y) |
 | Create side-by-side panes (prefix form) | Backtick, then V or `\|` |
 | Create top/bottom panes (alias) | Backtick, then `-` |
 | New window | Backtick, then C |
@@ -181,7 +181,8 @@ Option on Mac is Alt on Windows/Linux. These are shared between tmux and psmux:
 | Type a literal backtick | Backtick twice |
 
 Letters above are lowercase keypresses unless Shift is explicitly shown.
-Alt+Y is intentionally **not** bound because it conflicts with shell paste cycling.
+Shell paste cycling (`yank-pop`) is moved to **Ctrl+X, then Y**, freeing Alt+Y
+for top/bottom pane splits in both zsh and Git Bash.
 Any root-level Alt binding takes priority over the application inside a pane.
 WezTerm itself does not intercept these pane shortcuts.
 

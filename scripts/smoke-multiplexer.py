@@ -45,6 +45,8 @@ with tempfile.TemporaryDirectory(prefix="dotfiles-mux-") as temp:
         # source-file reports errors synchronously, including unsupported config commands.
         result = command("source-file", str(config), check=False)
         assert result.returncode == 0, result.stdout + result.stderr
+        result = command("list-keys", "-T", "root", "M-y")
+        assert "split-window -v" in result.stdout, result.stdout
         for key, direction in [("h", "L"), ("j", "D"), ("k", "U"), ("l", "R")]:
             result = command("list-keys", "-T", "root", "M-" + key)
             assert "select-pane -" + direction in result.stdout, result.stdout

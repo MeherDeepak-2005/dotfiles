@@ -198,4 +198,4 @@ else
 fi
 printf 'Existing configs selected for backup are under: %s\n' "$BACKUP_ROOT"
 printf 'Pane movement: Alt/Option+H/J/K/L. Split side-by-side: Alt/Option+V.\n'
-printf 'Split top/bottom: backtick, then Y. Other existing backtick commands are preserved.\n'
+printf 'Split top/bottom: Alt/Option+Y (or backtick, then Y). Paste cycling: Ctrl+X, then Y.\n'

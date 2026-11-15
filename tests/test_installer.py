@@ -158,7 +158,7 @@ class RenderingTests(unittest.TestCase):
                 for key, direction in [("h", "L"), ("j", "D"), ("k", "U"), ("l", "R")]:
                     self.assertEqual(text.count("bind -n M-" + key + " select-pane -" + direction), 1)
                 self.assertIn('bind -n M-v split-window -h -c "#{pane_current_path}"', text)
-                self.assertNotIn("bind -n M-y", text)
+                self.assertIn('bind -n M-y split-window -v -c "#{pane_current_path}"', text)
                 self.assertIn("bind y split-window -v", text)
                 self.assertIn("prediction-dimming", text) if platform == "windows" else None
                 if platform == "windows":
