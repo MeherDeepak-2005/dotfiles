@@ -8,6 +8,29 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def find_bash():
+    if os.name == "nt":
+        # Windows' System32/bash.exe is a WSL launcher, not Git Bash.
+        git = shutil.which("git")
+        if git:
+            for parent in Path(git).resolve().parents:
+                candidate = parent / "bin/bash.exe"
+                if candidate.is_file():
+                    return str(candidate)
+        raise RuntimeError("Git Bash is required for Windows installer tests")
+    return shutil.which("bash")
+
+
+BASH = find_bash()
+
+
+def bash_path(path):
+    if os.name == "nt":
+        cygpath = Path(BASH).parent.parent / "usr/bin/cygpath.exe"
+        return subprocess.check_output([str(cygpath), "-u", str(path)], text=True).strip()
+    return str(path)
+
+
 class DeploymentTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="dotfiles-tests-")
@@ -22,10 +45,6 @@ class DeploymentTests(unittest.TestCase):
 
     def bash(self, body, policy="backup", success=True):
         env = os.environ.copy()
-        def bash_path(path):
-            if os.name == "nt":
-                return subprocess.check_output(["bash", "-c", 'cygpath -u "$1"', "--", str(path)], text=True).strip()
-            return str(path)
         env.update(TEST_ROOT=bash_path(self.base), TEST_SOURCE=bash_path(self.source), TEST_DEST=bash_path(self.dest),
                    TEST_REPO=bash_path(ROOT), TEST_POLICY=policy)
         prelude = '''set -euo pipefail
@@ -37,7 +56,9 @@ BACKUP_ROOT="$TEST_ROOT/backups"
 EXISTING=$TEST_POLICY
 source "$TEST_REPO/lib/deploy.sh"
 '''
-        result = subprocess.run(["bash", "-c", prelude + body], env=env, text=True,
+        if os.name == "nt":
+            env["PATH"] = str(Path(BASH).parent.parent / "usr/bin") + os.pathsep + env["PATH"]
+        result = subprocess.run([BASH, "-c", prelude + body], env=env, text=True,
                                 capture_output=True, start_new_session=True)
         if success:
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -145,10 +166,10 @@ class RenderingTests(unittest.TestCase):
                     self.assertNotIn("/bin/zsh", text)
 
     def test_cli_dry_run_and_invalid_options(self):
-        result = subprocess.run(["bash", str(ROOT / "startup.sh"), "--dry-run"], text=True, capture_output=True)
+        result = subprocess.run([BASH, bash_path(ROOT / "startup.sh"), "--dry-run"], text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("DRY RUN", result.stdout)
-        self.assertNotEqual(subprocess.run(["bash", str(ROOT / "startup.sh"), "--unknown"], capture_output=True).returncode, 0)
+        self.assertNotEqual(subprocess.run([BASH, bash_path(ROOT / "startup.sh"), "--unknown"], capture_output=True).returncode, 0)
 
 
 if __name__ == "__main__":
