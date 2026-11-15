@@ -1,0 +1,99 @@
+# Homebrew lives at a different prefix on Apple Silicon, Intel Macs, and Linux.
+for _brew in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
+  if [[ -x "$_brew" ]]; then
+    eval "$("$_brew" shellenv)"
+    break
+  fi
+done
+unset _brew
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export STARSHIP_CONFIG="$XDG_CONFIG_HOME/starship.toml"
+export EDITOR=nvim
+export VISUAL=nvim
+export GOPATH="$HOME/go"
+typeset -U path PATH
+path=(
+  /opt/homebrew/bin /usr/local/bin
+  "$HOME/.local/bin" "$HOME/bin" "$GOPATH/bin"
+  $path
+)
+
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=50000
+setopt APPEND_HISTORY SHARE_HISTORY HIST_IGNORE_DUPS
+bindkey -e
+autoload -Uz compinit
+compinit
+
+alias ..='cd ..'
+alias g=git
+alias vim=nvim
+
+# --- file listing: colors + Nerd Font icons via eza ---
+export CLICOLOR=1
+# GNU-style palette used by eza, fzf and the completion menu
+export LS_COLORS='di=1;34:ln=1;36:mh=00:pi=33:so=1;35:do=1;35:bd=33;01:cd=33;01:or=1;31:mi=1;31:su=1;37;41:sg=30;43:ca=00:tw=30;42:ow=1;34;42:st=37;44:ex=1;32:*.tar=1;31:*.zip=1;31:*.gz=1;31:*.jpg=1;35:*.png=1;35:*.mp4=1;35:*.pdf=35:*.md=1;37:*.json=33:*.yml=33:*.yaml=33:*.sh=1;32:*.py=1;33:*.js=1;33:*.ts=1;34'
+# BSD ls fallback (if eza is ever unavailable)
+export LSCOLORS='ExGxFxdaCxDaDahbaDacec'
+
+if command -v eza >/dev/null 2>&1; then
+  _eza='eza --group-directories-first --color=auto --icons=auto'
+  alias ls="$_eza"
+  alias ll="$_eza -lah --git --time-style=long-iso"
+  alias la="$_eza -a"
+  alias lt="$_eza --tree --level=2"
+  alias ltt="$_eza --tree --level=4"
+  unset _eza
+else
+  alias ll='ls -lah'
+fi
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+
+if [[ -f "$HOME/anaconda3/etc/profile.d/conda.sh" ]]; then
+  source "$HOME/anaconda3/etc/profile.d/conda.sh"
+fi
+
+if command -v brew >/dev/null 2>&1; then
+  _terminal_brew_prefix="$(brew --prefix)"
+  [[ ! -r "$_terminal_brew_prefix/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]] ||
+    source "$_terminal_brew_prefix/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+  (( ! $+widgets[autosuggest-accept] )) || bindkey '^f' autosuggest-accept
+  [[ ! -r "$_terminal_brew_prefix/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]] ||
+    source "$_terminal_brew_prefix/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+  unset _terminal_brew_prefix
+fi
+if command -v starship >/dev/null 2>&1; then eval "$(starship init zsh)"; fi
+
+# z <name>  — jump straight to the best-matching folder, no picker screen.
+# Ranks: exact name > name starts with query > name contains query, then shortest path.
+z() {
+  emulate -L zsh
+  local query="$1"
+  [[ -z "$query" ]] && { cd -- "$HOME"; return }
+
+  local -a matches
+  matches=("${(@f)$(fd --type d --hidden --absolute-path \
+      --exclude Library --exclude .git --exclude node_modules --exclude .cache \
+      "$query" "$HOME" 2>/dev/null)}")
+  (( ${#matches} )) || { print -u2 "z: no folder matching '$query'"; return 1 }
+
+  local best
+  best="$(print -l -- "${matches[@]}" | awk -v q="${query:l}" '
+    { p=$0; n=split(p,a,"/"); base=tolower(a[n]);
+      score=(base==q)?0:(index(base,q)==1?1:2);
+      print score"\t"length(p)"\t"p }' |
+    sort -t$'\t' -k1,1n -k2,2n | head -1 | cut -f3-)"
+  [[ -n "$best" ]] && cd -- "$best"
+}
+
+# zi <name>  — interactive fzf picker (the old behaviour), for when you want to browse.
+zi() {
+  local dir
+  dir="$(fd --type d --hidden --exclude Library --exclude .git --exclude node_modules \
+      . "${1:-$HOME}" 2>/dev/null | fzf --prompt='Jump to folder > ')" || return
+  [[ -n "$dir" ]] && cd -- "$dir"
+}
+
+# Machine-specific additions belong here, outside the managed config.
+[[ ! -r "$HOME/.zshrc.local" ]] || source "$HOME/.zshrc.local"

@@ -1,0 +1,76 @@
+name: Validate dotfiles
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  config:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Bash syntax and isolated deployment tests
+        shell: bash
+        run: |
+          bash -n startup.sh lib/deploy.sh lib/packages.sh config/bashrc config/bash_profile
+          bash startup.sh --dry-run
+          python3 -m unittest discover -s tests -v
+      - name: Parse PowerShell and check Windows package plan
+        shell: pwsh
+        run: |
+          foreach ($file in @('bootstrap.ps1', 'scripts/windows-packages.ps1')) {
+            $tokens = $null; $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count) { throw ($errors | Out-String) }
+          }
+          & ./scripts/windows-packages.ps1 -DryRun
+      - name: Install Neovim (macOS)
+        if: runner.os == 'macOS'
+        run: brew install neovim tmux
+      - name: Install Neovim (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tmux
+          curl -fL --retry 3 https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz -o /tmp/nvim.tar.gz
+          tar xzf /tmp/nvim.tar.gz -C /tmp
+          echo '/tmp/nvim-linux-x86_64/bin' >> "$GITHUB_PATH"
+      - name: Install Neovim (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install neovim --yes --no-progress
+          'C:\Program Files\Neovim\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Install psmux for the Windows smoke test
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $release = Invoke-RestMethod https://api.github.com/repos/psmux/psmux/releases/latest
+          $asset = $release.assets | Where-Object { $_.name -match 'windows-x64\.zip$' } | Select-Object -First 1
+          if (!$asset) { throw 'psmux x64 release asset not found' }
+          $archive = Join-Path $env:RUNNER_TEMP psmux.zip
+          $destination = Join-Path $env:RUNNER_TEMP psmux
+          Invoke-WebRequest $asset.browser_download_url -OutFile $archive
+          if ($asset.digest -and $asset.digest.StartsWith('sha256:')) {
+            if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() -ne $asset.digest.Substring(7)) { throw 'psmux checksum mismatch' }
+          } else { throw 'psmux release lacks a SHA-256 digest' }
+          Expand-Archive $archive $destination
+          $binary = Get-ChildItem $destination -Recurse -Filter psmux.exe | Select-Object -First 1
+          if (!$binary) { throw 'psmux.exe missing from release archive' }
+          $binary.Directory.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Lua syntax, WezTerm branches, and real Neovim plugin smoke test
+        shell: bash
+        run: |
+          nvim --headless -u NONE -l tests/lua-syntax.lua "$PWD"
+          nvim --headless -u NONE -l tests/wezterm.lua "$PWD"
+          python3 scripts/smoke-nvim.py
+          python3 scripts/smoke-multiplexer.py

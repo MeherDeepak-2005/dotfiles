@@ -1,0 +1,6 @@
+.DS_Store
+*.bak-*
+*.log
+__pycache__/
+test-results/
+graphify-out/

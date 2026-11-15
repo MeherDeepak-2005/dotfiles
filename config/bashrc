@@ -1,0 +1,43 @@
+# Native Windows Git Bash. No WSL or Unix-only hardcoded executable paths.
+case $- in *i*) ;; *) return ;; esac
+export EDITOR=nvim VISUAL=nvim
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export STARSHIP_CONFIG="$XDG_CONFIG_HOME/starship.toml"
+export PATH="${SCOOP:-$HOME/scoop}/shims:$HOME/.local/bin:$HOME/bin:$PATH"
+HISTSIZE=50000
+HISTFILESIZE=50000
+shopt -s histappend
+alias ..='cd ..'
+alias g=git
+alias vim=nvim
+if command -v eza >/dev/null 2>&1; then
+  alias ls='eza --group-directories-first --color=auto --icons=auto'
+  alias ll='eza --group-directories-first --color=auto --icons=auto -lah --git --time-style=long-iso'
+  alias la='eza --group-directories-first --color=auto --icons=auto -a'
+  alias lt='eza --tree --level=2 --icons=auto'
+  alias ltt='eza --tree --level=4 --icons=auto'
+else
+  alias ll='ls -lah'
+fi
+
+z() {
+  local query="${1:-}" best
+  [ -n "$query" ] || { cd -- "$HOME"; return; }
+  best=$(fd --type d --hidden --absolute-path --exclude .git --exclude node_modules \
+    --exclude .cache --exclude AppData -- "$query" "$HOME" 2>/dev/null | tr '\\' '/' |
+    awk -v q="$query" '{p=$0; sub(/\/$/, "", p); n=split(p,a,"/"); base=tolower(a[n]);
+      q=tolower(q); score=(base==q)?0:(index(base,q)==1?1:2); print score "\t" length(p) "\t" p}' |
+    sort -t $'\t' -k1,1n -k2,2n | head -1 | cut -f3-)
+  [ -n "$best" ] || { printf "z: no folder matching '%s'\n" "$query" >&2; return 1; }
+  cd -- "$best"
+}
+zi() {
+  local dir
+  dir=$(fd --type d --hidden --exclude .git --exclude node_modules --exclude AppData \
+    . "${1:-$HOME}" 2>/dev/null | tr '\\' '/' | fzf --prompt='Jump to folder > ') || return
+  [ -z "$dir" ] || cd -- "$dir"
+}
+
+# Personal additions belong here so a future installer run need not replace them.
+[ ! -f "$HOME/.bashrc.local" ] || . "$HOME/.bashrc.local"
+if command -v starship >/dev/null 2>&1; then eval "$(starship init bash)"; fi
