@@ -17,7 +17,10 @@ base_command = [binary, "-L", label]
 
 
 def command(*args, check=True):
-    return subprocess.run(base_command + list(args), text=True, capture_output=True, check=check, timeout=20)
+    result = subprocess.run(base_command + list(args), text=True, encoding="utf-8", errors="replace", capture_output=True, timeout=20)
+    if check and result.returncode:
+        raise RuntimeError("Multiplexer command failed: " + repr(args) + "\n" + result.stdout + result.stderr)
+    return result
 
 
 with tempfile.TemporaryDirectory(prefix="dotfiles-mux-") as temp:

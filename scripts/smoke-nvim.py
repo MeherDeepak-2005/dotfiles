@@ -9,7 +9,7 @@ root = Path(__file__).resolve().parent.parent
 
 
 def run_editor(args, env, timeout):
-    result = subprocess.run(args, env=env, timeout=timeout, text=True, capture_output=True)
+    result = subprocess.run(args, env=env, timeout=timeout, text=True, encoding="utf-8", errors="replace", capture_output=True)
     if result.returncode:
         # Git progress can be very large; retain the useful end of the diagnostic.
         print((result.stdout + result.stderr)[-8000:])
