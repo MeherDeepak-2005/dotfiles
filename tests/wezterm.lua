@@ -10,6 +10,9 @@ for _, osname in ipairs({ "macos", "linux", "windows" }) do
     config_builder = function() return {} end,
     font = function(name) return name end,
     on = function(event, callback) callbacks[event] = callback end,
+    action = setmetatable({}, { __index = function(_, name)
+      return function(args) return { name = name, args = args } end
+    end }),
   }
   package.loaded.wezterm = wezterm
   local shell = osname == "windows" and "C:/Program Files/Git/bin/bash.exe" or "/test/bin/zsh"
@@ -22,6 +25,27 @@ for _, osname in ipairs({ "macos", "linux", "windows" }) do
   assert(config.send_composed_key_when_left_alt_is_pressed == false)
   assert(config.send_composed_key_when_right_alt_is_pressed == false)
   assert(config.macos_window_background_blur == (osname == "macos" and 50 or nil))
+  if osname == "windows" then
+    assert(config.font_size == 10.5, "Windows font must compensate for 96 DPI")
+    assert(config.window_decorations == "INTEGRATED_BUTTONS|RESIZE", "Windows window must stay draggable")
+    assert(config.hide_tab_bar_if_only_one_tab == false, "Integrated buttons need the tab bar")
+    assert(config.win32_system_backdrop == "Acrylic", "Windows background must be blurred")
+    assert(config.window_background_opacity == 0.65)
+  else
+    assert(config.font_size == 15.0)
+    assert(config.window_decorations == "RESIZE")
+    assert(config.hide_tab_bar_if_only_one_tab == true)
+    assert(config.win32_system_backdrop == nil)
+    assert(config.window_background_opacity == 0.8)
+  end
+  assert(config.window_close_confirmation == "NeverPrompt")
+  for _, binding in ipairs(config.keys) do
+    if binding.action.name == "CloseCurrentTab" then
+      assert(binding.action.args.confirm == false, "Closing a tab must not prompt")
+    end
+  end
+  local unfocused_opacity =osname == "windows" and 0.5 or 0.62
+  assert(unfocused_opacity < config.window_background_opacity, "Unfocused windows must be dimmer")
   local override = {}
   local writes = 0
   local focused = false
@@ -31,7 +55,7 @@ for _, osname in ipairs({ "macos", "linux", "windows" }) do
     set_config_overrides = function(_, value) override = value; writes = writes + 1 end,
   }
   callbacks["window-focus-changed"](window)
-  assert(writes == 1 and override.window_background_opacity == 0.62)
+  assert(writes == 1 and override.window_background_opacity == unfocused_opacity)
   callbacks["window-focus-changed"](window)
   assert(writes == 1, "Unchanged focus must not cause config reload loops")
   focused = true

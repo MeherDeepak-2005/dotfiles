@@ -17,9 +17,33 @@ end
 config.hide_tab_bar_if_only_one_tab = true
 config.window_decorations = "RESIZE"
 
+-- Close windows and tabs without an "are you sure?" prompt. The window setting
+-- covers the close button; the default close-tab keys ask separately.
+config.window_close_confirmation = "NeverPrompt"
+config.keys = {
+  { key = "w", mods = "CTRL|SHIFT", action = wezterm.action.CloseCurrentTab({ confirm = false }) },
+  { key = "w", mods = "SUPER", action = wezterm.action.CloseCurrentTab({ confirm = false }) },
+}
+
+if platform.platform == "windows" then
+  -- Windows renders points at 96 DPI (macOS at 72), so 15pt looks ~33% larger.
+  -- 10.5pt is 30% smaller than the macOS size.
+  config.font_size = 10.5
+  -- Without a title bar or tab bar there is nothing to drag the window by.
+  -- Keep the tab bar visible and put the min/max/close buttons in it; drag the
+  -- window by the empty part of the tab bar.
+  config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
+  config.hide_tab_bar_if_only_one_tab = false
+  -- Windows has no blur-radius setting; Acrylic is the system's frosted-glass
+  -- backdrop. A lower opacity lets more of the blur show through.
+  config.win32_system_backdrop = "Acrylic"
+  config.window_background_opacity = 0.65
+end
+
 -- Dim unfocused windows so the focused one is obvious at a glance.
 local UNFOCUSED_FOREGROUND_TEXT_HSB = { hue = 1.0, saturation = 0.25, brightness = 0.45 }
-local UNFOCUSED_WINDOW_BACKGROUND_OPACITY = 0.62
+-- Stay below the focused opacity on every platform.
+local UNFOCUSED_WINDOW_BACKGROUND_OPACITY = platform.platform == "windows" and 0.5 or 0.62
 
 -- get_config_overrides() hands back a copy, so the current value is never the
 -- same table we last stored; compare the fields instead of the identity.
